@@ -3,9 +3,9 @@ package storagecluster
 import (
 	"context"
 	"fmt"
-
 	ocsv1 "github.com/openshift/ocs-operator/api/v1"
 	cephv1 "github.com/rook/rook/pkg/apis/ceph.rook.io/v1"
+	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,6 +13,8 @@ import (
 )
 
 type ocsCephObjectStoreUsers struct{}
+
+const ibmCloudCosSecretName = "ibm-cloud-cos-creds"
 
 // newCephObjectStoreUserInstances returns the cephObjectStoreUser instances that should be created
 // on first run.
@@ -51,6 +53,24 @@ func (obj *ocsCephObjectStoreUsers) ensureCreated(r *StorageClusterReconciler, i
 	}
 	if avoidObjectStore(platform) {
 		return nil
+	}
+
+	// if platform is IBMCloud, enable CephObjectStore only if ibm-cloud-cos-creds secret is not present
+	// in the target namespace
+	if IsIBMPlatform(platform) {
+		foundSecret := &k8sv1.Secret{}
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ibmCloudCosSecretName, Namespace: instance.Namespace}, foundSecret)
+		if err != nil && errors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("IBMCloud: COS Secret %s not found in namespace %s", ibmCloudCosSecretName, instance.Namespace))
+		} else if err != nil {
+			r.Log.Error(err, fmt.Sprintf("IBMCloud: Could not get Secret %s in namespace %s", ibmCloudCosSecretName, instance.Namespace))
+			return err
+		} else {
+			// Secret is present. IBM COS is used as default backing store. Disable CephObjectStore.
+			r.Log.Info(fmt.Sprintf("Not creating a CephObjectStore because the platform is '%s' and COS secret '%s' is present", platform, ibmCloudCosSecretName))
+			return nil
+		}
+
 	}
 
 	cephObjectStoreUsers, err := r.newCephObjectStoreUserInstances(instance)

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	configv1 "github.com/openshift/api/config/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,6 +62,24 @@ func avoidObjectStore(p configv1.PlatformType) bool {
 		}
 	}
 	return false
+}
+
+// IsIBMPlatform returns true if this cluster is running on IBM Cloud
+func IsIBMPlatform(p configv1.PlatformType) bool {
+	isIBM := false
+	nodesList := &corev1.NodeList{}
+	if len(nodesList.Items) == 0 {
+		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+	}
+	if p == configv1.IBMCloudPlatformType {
+		isIBM = true
+	}
+	// Incase of Satellite, cluster is deployed in user provided infrastructure
+	if isIBM && strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
+		isIBM = false
+	}
+
+	return isIBM
 }
 
 func (r *StorageClusterReconciler) DevicesDefaultToFastForThisPlatform() (bool, error) {
