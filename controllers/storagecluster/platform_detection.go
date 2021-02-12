@@ -6,9 +6,11 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"sync"
 )
 
@@ -59,25 +61,34 @@ func (p *Platform) getPlatform(c client.Client) (configv1.PlatformType, error) {
 	return p.platform, nil
 }
 
-func avoidObjectStore(p configv1.PlatformTypei, namespace string) bool {
+func avoidObjectStore(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
 	for _, platform := range AvoidObjectStorePlatforms {
 		if p == platform {
-			if p == configv1.IBMCloudPlatformType && IsIBMPlatform(p) && !IsCosSecretPresent(namespace) {
-				return true
-
+			if p == configv1.IBMCloudPlatformType {
+				isIBM, err := IsIBMPlatform(p)
+				if err != nil {
+					return false, err
+				}
+				isSecretPresent, err := IsCosSecretPresent(namespace, c)
+				if err != nil {
+					return false, err
+				}
+				if isIBM && !isSecretPresent {
+					return true, nil
+				}
 			}
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // IsIBMPlatform returns true if this cluster is running on IBM Cloud
-func IsIBMPlatform(p configv1.PlatformType) bool {
+func IsIBMPlatform(p configv1.PlatformType) (bool, error) {
 	isIBM := false
 	nodesList := &corev1.NodeList{}
 	if len(nodesList.Items) == 0 {
-		Panic(fmt.Errorf("failed to list kubernetes nodes"))
+		return isIBM, fmt.Errorf("failed to list kubernetes nodes")
 	}
 	if p == configv1.IBMCloudPlatformType {
 		isIBM = true
@@ -87,24 +98,22 @@ func IsIBMPlatform(p configv1.PlatformType) bool {
 		isIBM = false
 	}
 
-	return isIBM
+	return isIBM, nil
 }
 
 // Check for ibm-cos-cred secret in the concerned namespace
 // if platform is IBMCloud, enable CephObjectStore only if ibm-cloud-cos-creds secret is not present
 // in the target namespace
-func IsCosSecretPresent(namespace string) bool {
+func IsCosSecretPresent(namespace string, c client.Client) (bool, error) {
 	foundSecret := &k8sv1.Secret{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ibmCloudCosSecretName, Namespace: namespace}, foundSecret)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: ibmCloudCosSecretName, Namespace: namespace}, foundSecret)
 	if err != nil && errors.IsNotFound(err) {
-		r.Log.Info(fmt.Sprintf("IBMCloud: COS Secret %s not found in namespace %s", ibmCloudCosSecretName, namespace))
-		return false
+		return false, nil
 	} else if err != nil {
-		Panic(fmt.Errorf("failed to get Secrets"))
-	} else {
-		// Secret is present. IBM COS is used as default backing store. Disable CephObjectStore.
-		return true
+		return false, err
 	}
+	// Secret is present. IBM COS is used as default backing store. Disable CephObjectStore.
+	return true, nil
 }
 func (r *StorageClusterReconciler) DevicesDefaultToFastForThisPlatform() (bool, error) {
 	c := r.Client

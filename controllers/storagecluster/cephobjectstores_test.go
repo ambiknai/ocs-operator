@@ -48,7 +48,9 @@ func assertCephObjectStores(t *testing.T, reconciler StorageClusterReconciler, c
 	err = reconciler.Client.Get(context.TODO(), request.NamespacedName, actualCos)
 	// for any cloud platform, 'cephobjectstore' should not be created
 	// 'Get' should have thrown an error
-	if avoidObjectStore(reconciler.platform.platform) {
+	avoidObj, _ := avoidObjectStore(reconciler.platform.platform, actualCos.Namespace, reconciler.Client)
+
+	if avoidObj {
 		assert.Error(t, err)
 	} else {
 		assert.NoError(t, err)
