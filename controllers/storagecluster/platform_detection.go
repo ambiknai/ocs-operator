@@ -3,13 +3,19 @@ package storagecluster
 import (
 	"context"
 	"fmt"
-	"sync"
-
 	configv1 "github.com/openshift/api/config/v1"
+	corev1 "k8s.io/api/core/v1"
+	k8sv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
+	"sync"
 )
+
+//IBMCloud secret name
+const ibmCloudCosSecretName = "ibm-cloud-cos-creds"
 
 // AvoidObjectStorePlatforms is a list of all PlatformTypes where CephObjectStores will not be deployed.
 var AvoidObjectStorePlatforms = []configv1.PlatformType{
@@ -61,6 +67,54 @@ func avoidObjectStore(p configv1.PlatformType) bool {
 		}
 	}
 	return false
+}
+
+func isIBMPlatformWithCosSecret(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
+	if p == configv1.IBMCloudPlatformType {
+		isIBM, err := IsIBMPlatform(p)
+		if err != nil {
+			return false, err
+		}
+		isSecretPresent, err := IsCosSecretPresent(namespace, c)
+		if err != nil {
+			return false, err
+		}
+		if isIBM && isSecretPresent {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// IsIBMPlatform returns true if this cluster is running on IBM Cloud
+// IBM Satellite clusters are not considered as IBMCloudPlatform
+func IsIBMPlatform(p configv1.PlatformType) (bool, error) {
+	isIBM := true
+	nodesList := &corev1.NodeList{}
+	if len(nodesList.Items) == 0 {
+		return isIBM, fmt.Errorf("failed to list kubernetes nodes")
+	}
+	// Incase of Satellite, cluster is deployed in user provided infrastructure
+	if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
+		isIBM = false
+	}
+
+	return isIBM, nil
+}
+
+// Check for ibm-cos-cred secret in the concerned namespace
+// if platform is IBMCloud, enable CephObjectStore only if ibm-cloud-cos-creds secret is not present
+// in the target namespace
+func IsCosSecretPresent(namespace string, c client.Client) (bool, error) {
+	foundSecret := &k8sv1.Secret{}
+	err := c.Get(context.TODO(), types.NamespacedName{Name: ibmCloudCosSecretName, Namespace: namespace}, foundSecret)
+	if err != nil && errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	// Secret is present.
+	return true, nil
 }
 
 func (r *StorageClusterReconciler) DevicesDefaultToFastForThisPlatform() (bool, error) {

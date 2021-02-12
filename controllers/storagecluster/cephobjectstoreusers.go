@@ -49,7 +49,11 @@ func (obj *ocsCephObjectStoreUsers) ensureCreated(r *StorageClusterReconciler, i
 	if err != nil {
 		return err
 	}
-	if avoidObjectStore(platform) {
+	isIBMWithSecret, err := isIBMPlatformWithCosSecret(platform, instance.Namespace, r.Client)
+	if err != nil {
+		return err
+	}
+	if avoidObjectStore(platform) || isIBMWithSecret {
 		return nil
 	}
 

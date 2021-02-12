@@ -225,7 +225,11 @@ func (r *StorageClusterReconciler) newStorageClassConfigurations(initData *ocsv1
 	// OR
 	// b. current platform is not a cloud-based platform
 	platform, err := r.platform.GetPlatform(r.Client)
-	if initData.Spec.ExternalStorage.Enable || err == nil && !avoidObjectStore(platform) {
+	isIBMWithSecret, err1 := isIBMPlatformWithCosSecret(platform, initData.Namespace, r.Client)
+	if err1 != nil {
+		return ret, err1
+	}
+	if initData.Spec.ExternalStorage.Enable || err == nil && !avoidObjectStore(platform) || !isIBMWithSecret {
 		ret = append(ret, newCephOBCStorageClassConfiguration(initData))
 	}
 	return ret, nil
