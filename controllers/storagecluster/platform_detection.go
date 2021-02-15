@@ -5,7 +5,6 @@ import (
 	"fmt"
 	configv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -71,7 +70,7 @@ func avoidObjectStore(p configv1.PlatformType) bool {
 
 func isIBMPlatformWithCosSecret(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
 	if p == configv1.IBMCloudPlatformType {
-		isIBM, err := IsIBMPlatform(p)
+		isIBM, err := IsIBMPlatform(p, c)
 		if err != nil {
 			return false, err
 		}
@@ -88,14 +87,15 @@ func isIBMPlatformWithCosSecret(p configv1.PlatformType, namespace string, c cli
 
 // IsIBMPlatform returns true if this cluster is running on IBM Cloud
 // IBM Satellite clusters are not considered as IBMCloudPlatform
-func IsIBMPlatform(p configv1.PlatformType) (bool, error) {
+func IsIBMPlatform(p configv1.PlatformType, c client.Client) (bool, error) {
 	isIBM := true
-	nodesList := &corev1.NodeList{}
-	if len(nodesList.Items) == 0 {
-		return isIBM, fmt.Errorf("failed to list kubernetes nodes")
+	nodeList := &corev1.NodeList{}
+	err := c.List(context.TODO(), nodeList)
+	if err != nil {
+		return isIBM, fmt.Errorf("failed to list kubernetes nodes: %s", err)
 	}
 	// Incase of Satellite, cluster is deployed in user provided infrastructure
-	if strings.Contains(nodesList.Items[0].Spec.ProviderID, "/sat-") {
+	if strings.Contains(nodeList.Items[0].Spec.ProviderID, "/sat-") {
 		isIBM = false
 	}
 
@@ -106,7 +106,7 @@ func IsIBMPlatform(p configv1.PlatformType) (bool, error) {
 // if platform is IBMCloud, enable CephObjectStore only if ibm-cloud-cos-creds secret is not present
 // in the target namespace
 func IsCosSecretPresent(namespace string, c client.Client) (bool, error) {
-	foundSecret := &k8sv1.Secret{}
+	foundSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: ibmCloudCosSecretName, Namespace: namespace}, foundSecret)
 	if err != nil && errors.IsNotFound(err) {
 		return false, nil
