@@ -25,7 +25,11 @@ func (obj *ocsCephRGWRoutes) ensureCreated(r *StorageClusterReconciler, instance
 	if err != nil {
 		return err
 	}
-	if avoidObjectStore(platform) {
+	isavoidObjectStore, err := avoidObjectStore(platform, instance.Namespace, r.Client)
+	if err != nil {
+		return err
+	}
+	if isavoidObjectStore {
 		r.Log.Info(fmt.Sprintf("not creating a Ceph RGW route because the platform is '%s'", platform))
 		return nil
 	}
