@@ -1,4 +1,4 @@
-module github.com/openshift/ocs-operator
+module github.com/ambiknai/ocs-operator
 
 go 1.13
 
