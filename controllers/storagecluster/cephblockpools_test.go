@@ -28,11 +28,11 @@ func TestCephBlockPools(t *testing.T) {
 		cp := &Platform{platform: eachPlatform}
 		for _, c := range cases {
 			var objects []runtime.Object
-			if c.createRuntimeObjects {
-				objects = createUpdateRuntimeObjects(cp)
-			}
 			t, reconciler, cr, request := initStorageClusterResourceCreateUpdateTestWithPlatform(
 				t, cp, objects)
+			if c.createRuntimeObjects {
+				objects = createUpdateRuntimeObjects(cp, cr.Namespace, reconciler.Client)
+			}
 			assertCephBlockPools(t, reconciler, cr, request)
 		}
 	}

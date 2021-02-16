@@ -2,6 +2,7 @@ package storagecluster
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
@@ -49,7 +50,8 @@ func createStorageCluster(scName, failureDomainName string,
 	return cr
 }
 
-func createUpdateRuntimeObjects(cp *Platform) []runtime.Object {
+func createUpdateRuntimeObjects(cp *Platform, namespace string, c client.Client) []runtime.Object {
+	isavoidObjectStore := false
 	csfs := &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ocsinit-cephfs",
@@ -71,8 +73,9 @@ func createUpdateRuntimeObjects(cp *Platform) []runtime.Object {
 		},
 	}
 	updateRTObjects := []runtime.Object{csfs, csrbd, cfs, cbp}
+	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
 
-	if !avoidObjectStore(cp.platform) {
+	if !isavoidObjectStore {
 		csobc := &storagev1.StorageClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-ceph-rgw",
@@ -82,7 +85,8 @@ func createUpdateRuntimeObjects(cp *Platform) []runtime.Object {
 	}
 
 	// Create 'cephobjectstoreuser' only for non-aws platforms
-	if !avoidObjectStore(cp.platform) {
+	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
+	if !isavoidObjectStore {
 		cosu := &cephv1.CephObjectStoreUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstoreuser",
@@ -92,7 +96,8 @@ func createUpdateRuntimeObjects(cp *Platform) []runtime.Object {
 	}
 
 	// Create 'cephobjectstore' only for non-cloud platforms
-	if !avoidObjectStore(cp.platform) {
+	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
+	if !isavoidObjectStore {
 		cos := &cephv1.CephObjectStore{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstore",
@@ -101,7 +106,8 @@ func createUpdateRuntimeObjects(cp *Platform) []runtime.Object {
 		updateRTObjects = append(updateRTObjects, cos)
 	}
 	// Create 'route' only for non-cloud platforms
-	if !avoidObjectStore(cp.platform) {
+	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
+	if !isavoidObjectStore {
 		cos := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstore",

@@ -26,11 +26,11 @@ func TestCephRGWRoutes(t *testing.T) {
 		cp := &Platform{platform: eachPlatform}
 		for _, c := range cases {
 			var objects []runtime.Object
-			if c.createRuntimeObjects {
-				objects = createUpdateRuntimeObjects(cp)
-			}
 			t, reconciler, cr, request := initStorageClusterResourceCreateUpdateTestWithPlatform(
 				t, cp, objects)
+			if c.createRuntimeObjects {
+				objects = createUpdateRuntimeObjects(cp, cr.Namespace, reconciler.Client)
+			}
 			assertCephRGWRoutes(t, reconciler, cr, request)
 		}
 	}
@@ -54,7 +54,8 @@ func assertCephRGWRoutes(t *testing.T, reconciler StorageClusterReconciler, cr *
 	err = reconciler.Client.Get(context.TODO(), request.NamespacedName, actualCos)
 	// for any cloud platform, 'route' should not be created
 	// 'Get' should have thrown an error
-	if avoidObjectStore(reconciler.platform.platform) {
+	isavoidObjectStore, _ := avoidObjectStore(reconciler.platform.platform, cr.Namespace, reconciler.Client)
+	if isavoidObjectStore {
 		assert.Error(t, err)
 	} else {
 		assert.NoError(t, err)

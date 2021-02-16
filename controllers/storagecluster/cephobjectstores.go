@@ -26,11 +26,14 @@ func (obj *ocsCephObjectStores) ensureCreated(r *StorageClusterReconciler, insta
 	if err != nil {
 		return err
 	}
-	if avoidObjectStore(platform) {
+	isavoidObjectStore, err := avoidObjectStore(platform, instance.Namespace, r.Client)
+	if err != nil {
+		return err
+	}
+	if isavoidObjectStore {
 		r.Log.Info(fmt.Sprintf("not creating a CephObjectStore because the platform is '%s'", platform))
 		return nil
 	}
-
 	cephObjectStores, err := r.newCephObjectStoreInstances(instance)
 	if err != nil {
 		return err

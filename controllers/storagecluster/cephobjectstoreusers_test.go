@@ -26,11 +26,11 @@ func TestCephObjectStoreUsers(t *testing.T) {
 		cp := &Platform{platform: eachPlatform}
 		for _, c := range cases {
 			var objects []runtime.Object
-			if c.createRuntimeObjects {
-				objects = createUpdateRuntimeObjects(cp)
-			}
 			t, reconciler, cr, request := initStorageClusterResourceCreateUpdateTestWithPlatform(
 				t, cp, objects)
+			if c.createRuntimeObjects {
+				objects = createUpdateRuntimeObjects(cp, cr.Namespace, reconciler.Client)
+			}
 			assertCephObjectStoreUsers(t, reconciler, cr, request)
 		}
 	}
@@ -48,7 +48,8 @@ func assertCephObjectStoreUsers(t *testing.T, reconciler StorageClusterReconcile
 	}
 	request.Name = "ocsinit-cephobjectstoreuser"
 	err = reconciler.Client.Get(context.TODO(), request.NamespacedName, actualCosu)
-	if avoidObjectStore(reconciler.platform.platform) {
+	isavoidObjectStore, _ := avoidObjectStore(reconciler.platform.platform, cr.Namespace, reconciler.Client)
+	if isavoidObjectStore {
 		assert.Error(t, err)
 	} else {
 		assert.NoError(t, err)
