@@ -74,11 +74,14 @@ func avoidObjectStore(p configv1.PlatformType, namespace string, c client.Client
 					if err != nil {
 						return false, err
 					}
-				}
-				if isIBM && isSecretPresent {
-					return true, nil
+					if isSecretPresent {
+						return true, nil
+					}
+					// IsIBM but secret not present
+					return false, nil
 				}
 			}
+			// platform is something other than IBMCloud in AvoidObjectStorePlatforms
 			return true, nil
 		}
 	}
