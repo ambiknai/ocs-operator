@@ -31,7 +31,8 @@ func TestCephBlockPools(t *testing.T) {
 			t, reconciler, cr, request := initStorageClusterResourceCreateUpdateTestWithPlatform(
 				t, cp, objects)
 			if c.createRuntimeObjects {
-				objects = createUpdateRuntimeObjects(cp, cr.Namespace, reconciler.Client)
+				isavoidObjectStore, _ := avoidObjectStore(cp.platform, cr.Namespace, reconciler.Client)
+				objects = createUpdateRuntimeObjects(cp, isavoidObjectStore)
 				t, reconciler, cr, request = initStorageClusterResourceCreateUpdateTestWithPlatform(
 					t, cp, objects)
 			}

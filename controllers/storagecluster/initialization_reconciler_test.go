@@ -2,7 +2,6 @@ package storagecluster
 
 import (
 	"context"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 
 	snapapi "github.com/kubernetes-csi/external-snapshotter/v2/pkg/apis/volumesnapshot/v1beta1"
@@ -50,8 +49,7 @@ func createStorageCluster(scName, failureDomainName string,
 	return cr
 }
 
-func createUpdateRuntimeObjects(cp *Platform, namespace string, c client.Client) []runtime.Object {
-	isavoidObjectStore := false
+func createUpdateRuntimeObjects(cp *Platform, avoidObjectStore bool) []runtime.Object {
 	csfs := &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ocsinit-cephfs",
@@ -73,47 +71,37 @@ func createUpdateRuntimeObjects(cp *Platform, namespace string, c client.Client)
 		},
 	}
 	updateRTObjects := []runtime.Object{csfs, csrbd, cfs, cbp}
-	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
 
-	if !isavoidObjectStore {
+	if !avoidObjectStore {
 		csobc := &storagev1.StorageClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-ceph-rgw",
 			},
 		}
 		updateRTObjects = append(updateRTObjects, csobc)
-	}
 
-	// Create 'cephobjectstoreuser' only for non-aws platforms
-	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
-	if !isavoidObjectStore {
+		// Create 'cephobjectstoreuser' only for non-aws platforms
 		cosu := &cephv1.CephObjectStoreUser{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstoreuser",
 			},
 		}
 		updateRTObjects = append(updateRTObjects, cosu)
-	}
 
-	// Create 'cephobjectstore' only for non-cloud platforms
-	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
-	if !isavoidObjectStore {
+		// Create 'cephobjectstore' only for non-cloud platforms
 		cos := &cephv1.CephObjectStore{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstore",
 			},
 		}
 		updateRTObjects = append(updateRTObjects, cos)
-	}
-	// Create 'route' only for non-cloud platforms
-	isavoidObjectStore, _ = avoidObjectStore(cp.platform, namespace, c)
-	if !isavoidObjectStore {
-		cos := &routev1.Route{
+		// Create 'route' only for non-cloud platforms
+		cosr := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "ocsinit-cephobjectstore",
 			},
 		}
-		updateRTObjects = append(updateRTObjects, cos)
+		updateRTObjects = append(updateRTObjects, cosr)
 	}
 	return updateRTObjects
 }
