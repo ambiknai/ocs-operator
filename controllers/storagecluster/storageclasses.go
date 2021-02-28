@@ -228,7 +228,7 @@ func (r *StorageClusterReconciler) newStorageClassConfigurations(initData *ocsv1
 	if err != nil {
 		return ret, err
 	}
-	isavoidObjectStore, err1 := avoidObjectStore(platform, initData.Namespace, r.Client)
+	isavoidObjectStore, err1 := r.avoidObjectStore(platform, initData.Namespace, r.Client)
 	if err1 != nil {
 		return ret, err1
 	}

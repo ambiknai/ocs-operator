@@ -60,7 +60,7 @@ func (p *Platform) getPlatform(c client.Client) (configv1.PlatformType, error) {
 	return p.platform, nil
 }
 
-func avoidObjectStore(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
+func (r *StorageClusterReconciler) avoidObjectStore(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
 	for _, platform := range AvoidObjectStorePlatforms {
 		if p == platform {
 			if p == configv1.IBMCloudPlatformType {

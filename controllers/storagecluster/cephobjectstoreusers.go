@@ -49,7 +49,7 @@ func (obj *ocsCephObjectStoreUsers) ensureCreated(r *StorageClusterReconciler, i
 	if err != nil {
 		return err
 	}
-	isavoidObjectStore, err := avoidObjectStore(platform, instance.Namespace, r.Client)
+	isavoidObjectStore, err := r.avoidObjectStore(platform, instance.Namespace, r.Client)
 	if err != nil {
 		return err
 	}
