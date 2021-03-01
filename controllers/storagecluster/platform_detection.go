@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	configv1 "github.com/openshift/api/config/v1"
+	ocsv1 "github.com/openshift/ocs-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,32 +61,36 @@ func (p *Platform) getPlatform(c client.Client) (configv1.PlatformType, error) {
 	return p.platform, nil
 }
 
-func (r *StorageClusterReconciler) avoidObjectStore(p configv1.PlatformType, namespace string, c client.Client) (bool, error) {
+func (r *StorageClusterReconciler) avoidObjectStore(instance *ocsv1.StorageCluster) (bool, configv1.PlatformType, error) {
+	p, err := r.platform.GetPlatform(r.Client)
+	if err != nil {
+		return false, p, err
+	}
 	for _, platform := range AvoidObjectStorePlatforms {
 		if p == platform {
 			if p == configv1.IBMCloudPlatformType {
 				isSecretPresent := false
-				isIBM, err := IsIBMPlatform(p, c)
+				isIBM, err := IsIBMPlatform(p, r.Client)
 				if err != nil {
-					return false, err
+					return false, p, err
 				}
 				if isIBM {
-					isSecretPresent, err = IsCosSecretPresent(namespace, c)
+					isSecretPresent, err = IsCosSecretPresent(instance.Namespace, r.Client)
 					if err != nil {
-						return false, err
+						return false, p, err
 					}
 					if isSecretPresent {
-						return true, nil
+						return true, p, nil
 					}
 					// IsIBM but secret not present
-					return false, nil
+					return false, p, nil
 				}
 			}
 			// platform is something other than IBMCloud in AvoidObjectStorePlatforms
-			return true, nil
+			return true, p, nil
 		}
 	}
-	return false, nil
+	return false, p, nil
 }
 
 // IsIBMPlatform returns true if this cluster is running on IBM Cloud

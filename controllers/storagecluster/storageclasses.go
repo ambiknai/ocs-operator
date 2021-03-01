@@ -224,13 +224,9 @@ func (r *StorageClusterReconciler) newStorageClassConfigurations(initData *ocsv1
 	// a. either 'externalStorage' is enabled
 	// OR
 	// b. current platform is not a cloud-based platform
-	platform, err := r.platform.GetPlatform(r.Client)
+	isavoidObjectStore, _, err := r.avoidObjectStore(initData)
 	if err != nil {
 		return ret, err
-	}
-	isavoidObjectStore, err1 := r.avoidObjectStore(platform, initData.Namespace, r.Client)
-	if err1 != nil {
-		return ret, err1
 	}
 	if initData.Spec.ExternalStorage.Enable || !isavoidObjectStore {
 		ret = append(ret, newCephOBCStorageClassConfiguration(initData))

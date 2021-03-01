@@ -30,7 +30,7 @@ func TestCephFileSystem(t *testing.T) {
 			t, reconciler, cr, request := initStorageClusterResourceCreateUpdateTestWithPlatform(
 				t, cp, objects)
 			if c.createRuntimeObjects {
-				isavoidObjectStore, _ := reconciler.avoidObjectStore(cp.platform, cr.Namespace, reconciler.Client)
+				isavoidObjectStore, _, _ := reconciler.avoidObjectStore(cr)
 				objects = createUpdateRuntimeObjects(cp, isavoidObjectStore)
 				t, reconciler, cr, request = initStorageClusterResourceCreateUpdateTestWithPlatform(
 					t, cp, objects)

@@ -21,11 +21,7 @@ func (obj *ocsCephRGWRoutes) ensureCreated(r *StorageClusterReconciler, instance
 	if reconcileStrategy == ReconcileStrategyIgnore {
 		return nil
 	}
-	platform, err := r.platform.GetPlatform(r.Client)
-	if err != nil {
-		return err
-	}
-	isavoidObjectStore, err := r.avoidObjectStore(platform, instance.Namespace, r.Client)
+	isavoidObjectStore, platform, err := r.avoidObjectStore(instance)
 	if err != nil {
 		return err
 	}
